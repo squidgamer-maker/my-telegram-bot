@@ -1,14 +1,18 @@
 const { Telegraf } = require('telegraf');
+require('dotenv').config();
 
-// Replace 'YOUR_BOT_TOKEN' with the token from BotFather
-const bot = new Telegraf('8186698815:AAFyMCvx_bWBfCsnGrcCd49R3LjnvbJqgME');
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
-bot.start((ctx) => ctx.reply('Welcome! I am your Node.js bot running on Termux.'));
-bot.help((ctx) => ctx.reply('Send me a sticker'));
-bot.on('sticker', (ctx) => ctx.reply('👍'));
-bot.hears('hi', (ctx) => ctx.reply('Hey there!'));
+// When someone types /start
+bot.start((ctx) => ctx.reply('Welcome! Your bot is officially alive on Termux. 🚀'));
 
-bot.launch();
+// A simple 'hi' response
+bot.hears('hi', (ctx) => ctx.reply('Hey there! How can I help you today?'));
+
+// Launch the bot
+bot.launch().then(() => {
+    console.log('✅ Telegram Bot is running...');
+});
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
