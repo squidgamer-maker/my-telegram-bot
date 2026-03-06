@@ -3,7 +3,6 @@ const {
     default: makeWASocket, 
     useMultiFileAuthState, 
     DisconnectReason, 
-    delay, 
     fetchLatestWaWebVersion,
     Browsers 
 } = require('@whiskeysockets/baileys');
@@ -13,8 +12,12 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
-const bot = new Telegraf('8186698815:AAFyMCvx_bWBfCsnGrcCd49R3LjnvbJqgME');
+// --- CONFIGURATION ---
+const BOT_TOKEN = '8186698815:AAFyMCvx_bWBfCsnGrcCd49R3LjnvbJqgME'; // Replace with your token
+const OWNER_ID = '5503666506';     // Replace with your ID from @userinfobot
+const bot = new Telegraf(BOT_TOKEN);
 const app = express();
+
 app.use(express.json());
 app.use(cors());
 
@@ -30,55 +33,45 @@ async function startWhatsApp() {
         logger: pino({ level: 'silent' }),
         auth: state,
         version,
-        browser: Browsers.windows("Chrome"),
-        defaultQueryTimeoutMs: undefined
+        browser: Browsers.windows("Chrome")
     });
 
     sock.ev.on('creds.update', saveCreds);
-
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startWhatsApp();
-        } else if (connection === 'open') {
-            console.log('✅ WhatsApp Linked Successfully!');
-        }
-    });
-
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0];
-        if (msg.message?.viewOnceMessageV2 || msg.message?.viewOnceMessageV2Extension) {
-            console.log("📩 View Once message detected!");
-        }
+    sock.ev.on('connection.update', (update) => {
+        if (update.connection === 'close') startWhatsApp();
     });
 }
 
-// --- 2. Pairing API Endpoint ---
-app.post('/api/pair', async (req, res) => {
-    const { phone } = req.body;
-    if (!sock) return res.status(500).send("WhatsApp not initialized");
-    try {
-        const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
-        res.json({ code });
-    } catch (err) {
-        res.status(500).send("Pairing request failed");
+// --- 2. Middleware: Logging to Owner ---
+bot.use(async (ctx, next) => {
+    if (ctx.message && ctx.message.text && ctx.message.text.startsWith('/')) {
+        const user = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name;
+        await bot.telegram.sendMessage(OWNER_ID, `👤 User: ${user}\n⌨️ Command: ${ctx.message.text}`);
     }
+    return next();
 });
 
-// --- 3. Telegram Modules ---
+// --- 3. Dynamic Command Loader ---
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
     fs.readdirSync(commandsPath).forEach((file) => {
         if (file.endsWith('.js')) {
-            require(path.join(commandsPath, file))(bot);
-            console.log(`✅ Loaded Telegram module: ${file}`);
+            const command = require(path.join(commandsPath, file));
+            if (typeof command === 'function') {
+                command(bot);
+            }
         }
     });
 }
 
-// --- 4. Startup ---
-app.listen(3000, () => console.log('🌐 Pairing API active on port 3000'));
+// --- 4. API & Startup ---
+app.post('/api/pair', async (req, res) => {
+    if (!sock) return res.status(500).send("WhatsApp not ready");
+    const code = await sock.requestPairingCode(req.body.phone.replace(/[^0-9]/g, ''));
+    res.json({ code });
+});
+
+app.listen(3000, () => console.log('🌐 API active on port 3000'));
 startWhatsApp();
 bot.launch().then(() => console.log('🚀 Telegram Bot active!'));
 
