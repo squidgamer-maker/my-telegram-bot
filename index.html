@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot Pairing</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: white; }
+        input { padding: 10px; width: 80%; max-width: 300px; margin: 10px 0; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; background: #25D366; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #codeDisplay { margin-top: 20px; font-size: 1.5rem; font-weight: bold; color: #25D366; }
+    </style>
+</head>
+<body>
+    <h2>🚀 WhatsApp Bot Pairing</h2>
+    <p>Enter your phone number (e.g., 254712345678)</p>
+    <input type="text" id="phone" placeholder="2547XXXXXXXX">
+    <button onclick="pair()">Generate Pairing Code</button>
+    <div id="codeDisplay"></div>
+
+    <script>
+        async function pair() {
+            const phone = document.getElementById('phone').value;
+            const display = document.getElementById('codeDisplay');
+            display.innerText = "Requesting code...";
+            
+            try {
+                // REPLACE THIS URL with your live Ngrok URL (e.g., https://xyz.ngrok-free.app/api/pair)
+                const response = await fetch('https://YOUR-NGROK-URL.ngrok-free.app/api/pair', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone })
+                });
+                const data = await response.json();
+                display.innerText = "🔑 Code: " + data.code;
+            } catch (err) {
+                display.innerText = "❌ Error: Could not connect to Bot Engine.";
+            }
+        }
+    </script>
+</body>
+</html>
